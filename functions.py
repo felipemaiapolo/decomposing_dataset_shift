@@ -101,3 +101,49 @@ def simulation(b, data, eps=10**-20):
         shift_err.append([total_err, conc_err, cov_err])
         
     return [shift_est, shift_err]
+
+def simulation2(b, data):
+    num_feat=[1, 2, 3, 5, 10, 15, 25, 50, 75]
+    
+    #Outputs
+    p_est=[]
+    p_err=[]
+    
+    #Splitting data
+    for i in range(m):
+        data[i][b]={}
+        data[i][b]['X_train'], data[i][b]['X_test'], data[i][b]['y_train'], data[i][b]['y_test'] = train_test_split(data[i]['X'], data[i]['y'], test_size=.1, stratify=data[i]['y'], random_state=b)
+        data[i][b]['X_train'], data[i][b]['X_val'], data[i][b]['y_train'], data[i][b]['y_val'] = train_test_split(data[i][b]['X_train'], data[i][b]['y_train'], test_size=.1, stratify=data[i][b]['y_train'], random_state=b)
+        
+    #For each number of features we make
+    for k in num_feat:
+        
+        if b==0:
+            print(k)
+        
+        ##### estimating delta prob #####
+        models=[]
+        p_fact=[]
+        p_cfact=[]
+            
+        for i in range(m):
+            X = data[i][b]['X_train'].iloc[:,:k]
+            y = data[i][b]['y_train'].squeeze()
+            X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.1, stratify=y, random_state=b)
+            models.append(train_model(X_train, y_train, X_val, y_val, b))
+            
+        for i in range(m):
+            p_fact.append(models[i].predict_proba(data[i][b]['X_test'].iloc[:,:k])[:,1])
+            p_cfact.append(models[0].predict_proba(data[i][b]['X_test'].iloc[:,:k])[:,1])
+
+        ##### storing #####
+        
+        p_fact_est = [np.mean(d) for d in p_fact]
+        p_fact_err = [np.std(np.array(d))/np.sqrt(len(d)) for d in p_fact]
+        p_cfact_est = [np.mean(d) for d in p_cfact]
+        p_cfact_err = [np.std(np.array(d))/np.sqrt(len(d)) for d in p_cfact]
+        
+        p_est.append([p_fact_est, p_cfact_est])
+        p_err.append([p_fact_err, p_cfact_err])
+
+    return [p_est, p_err]
